@@ -1,0 +1,11 @@
+POST
+api/signup
+{email,password,firstname,lastname}
+api/login
+{email,password}
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2MDIxMmU1NmY3NTlkNjA2NzgzNjZhZTIiLCJpYXQiOjE2MTI3ODcyODZ9.XnCYhr-2inEms0SJI42653ikz8wxf-O6V8K3mz2gn-4
+Swagger Documentation
+onEndReached={this._handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent
