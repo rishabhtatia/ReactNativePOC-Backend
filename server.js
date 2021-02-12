@@ -9,6 +9,10 @@ const authentication = require("./routes/authentication");
 const book = require("./routes/book");
 const User = require("./models/user");
 const app = express();
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log("Server is running on port " + port);
+});
 // mongoose.connect(
 //   "mongodb+srv://demoapp:demodemo@cluster0.2gpk4.mongodb.net/?w=majority",
 //   {
@@ -31,28 +35,7 @@ const publicDirectoryPath = path.join(__dirname, "/public");
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-multer({
-  limits: { fieldSize: 25 * 1024 * 1024 },
-});
 app.use("/static", express.static(publicDirectoryPath));
-
-app.post("/test", async (req, res) => {
-  const user = new User({
-    email: req.body.email,
-    password: req.body.password,
-  });
-  try {
-    const user = await user.save();
-    res.status(201).json({
-      message: "User added successfully",
-      body: req.body,
-    });
-  } catch (err) {
-    res.status(422).send(err.message);
-  }
-});
-
-// app.use("/api", postData);
 app.use("/api", authentication);
 app.use("/api", book);
 app.use((req, res, next) => {
@@ -69,8 +52,3 @@ app.use((err, req, res, next) => {
     },
   });
 });
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
-});
-//b2cac78f-5b29-48c7-b95d-58728d038a4c
-//Username:"demoapp",Password:"skr6DRa4Vupd6x40"
