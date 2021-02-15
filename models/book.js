@@ -27,5 +27,12 @@ const bookSchema = new mongoose.Schema({
   },
 });
 
+bookSchema.methods.toJSON = function () {
+  const book = this;
+  const bookObject = book.toObject();
+  delete bookObject.image;
+  return bookObject;
+};
+
 const Book = mongoose.model("Book", bookSchema);
 module.exports = Book;

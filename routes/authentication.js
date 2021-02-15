@@ -6,8 +6,37 @@ const { default: validator } = require("validator");
 const auth = require("../middleware/auth");
 const { route } = require("./postData");
 
-router.get("/me", auth, (req, res, next) => {
-  res.status(200).send({ user: req.user });
+router.get("/me", auth, async (req, res, next) => {
+  try {
+    res.status(200).send({ user: req.user });
+  } catch (e) {
+    res.status(500).send();
+  }
+});
+
+router.patch("/me", auth, async (req, res, next) => {
+  const updates = Object.keys(req.body);
+  const allowedUpdates = ["firstname", "lastname"];
+  const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
+  if (!isValidOperation) {
+    return res.status(400).send({ message: "Invalid Updates" });
+  }
+  try {
+    updates.forEach((update) => (req.user[update] = req.body[update]));
+    await req.user.save();
+    res.status(200).send({ user: req.user });
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+
+router.delete("/me", auth, async (req, res, next) => {
+  try {
+    await req.user.remove();
+    res.send(req.user);
+  } catch (e) {
+    res.status(500).send();
+  }
 });
 
 router.post("/signup", (req, res, next) => {
@@ -66,6 +95,16 @@ router.post("/login", async (req, res, next) => {
     return res.status(400).json({
       message: "Invalid Email/Password supplied",
     });
+  }
+});
+
+router.post("/logoutAll", auth, async (req, res, next) => {
+  try {
+    req.user.tokens = [];
+    await req.user.save();
+    res.status(200).send({ message: "Logged Out successfully" });
+  } catch (err) {
+    res.status(500).send({ message: "Unable to Log out" });
   }
 });
 

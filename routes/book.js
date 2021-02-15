@@ -37,7 +37,7 @@ router.get("/post", auth, (req, res, next) => {
       res.status(200).json({
         message: "Books send successfully!!",
         posts: fetchedPosts,
-        maxPosts: count,
+        maxRows: count,
       });
     })
     .catch((err) => {
@@ -79,7 +79,6 @@ router.patch("/updatepost/:id", auth, upload.single("image"), async (req, res, n
       },
       { new: true, runValidators: true, useFindAndModify: false }
     );
-    console.log(book);
     if (!book) {
       return res.status(404).json({ message: "Book Not Found" });
     } else {
@@ -143,12 +142,15 @@ router.delete("/post/:id", auth, async (req, res, next) => {
 router.get("/imagepost/:id", async (req, res, next) => {
   const id = req.params.id;
   console.log(id);
-  console.log("BOOK");
   try {
     const book = await Book.findById(id);
     // console.log(book);
+    let img = book.image;
+    // if (img == undefined) {
+    //   console.log(img);
+    // }
     res.set("Content-Type", "image/png");
-    res.send(book.image);
+    res.send(img);
   } catch (err) {
     console.log(err);
   }
