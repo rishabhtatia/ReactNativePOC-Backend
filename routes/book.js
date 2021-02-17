@@ -6,7 +6,7 @@ const auth = require("../middleware/auth");
 const sharp = require("sharp");
 const upload = multer({
   limits: {
-    fileSize: 150000,
+    fileSize: 1500000,
   },
   // fileFilter(req, file, cb) {
   //   console.log(file.originalname);
