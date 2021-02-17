@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { JWTKEY } = require("../constants/constants");
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -17,17 +16,35 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
   },
   firstname: {
     type: String,
-    required: true,
+    default: "",
   },
   lastname: {
     type: String,
-    required: true,
+    default: "",
+  },
+  avatarurl: {
+    type: String,
+  },
+  googlelogin: {
+    type: Boolean,
+    default: false,
+  },
+  facebooklogin: {
+    type: Boolean,
+    default: false,
   },
   tokens: [
+    {
+      token: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
+  externaltokens: [
     {
       token: {
         type: String,
@@ -42,15 +59,22 @@ userSchema.methods.toJSON = function () {
   const userObject = user.toObject();
   delete userObject.password;
   delete userObject.tokens;
+  delete userObject.externaltokens;
   return userObject;
 };
 
 userSchema.methods.generateAuthToken = async function () {
   const user = this;
-  const token = jwt.sign({ _id: user._id }, JWTKEY);
+  const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_KEY);
   user.tokens = [...user.tokens, { token }];
   await user.save();
   return token;
+};
+
+userSchema.methods.saveAccessToken = async function (token) {
+  const user = this;
+  user.externaltokens = [...user.externaltokens, { token }];
+  await user.save();
 };
 
 userSchema.statics.findByCredentials = async (email, password) => {
@@ -61,6 +85,14 @@ userSchema.statics.findByCredentials = async (email, password) => {
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new Error("Invalid Email/Password supplied");
+  }
+  return user;
+};
+
+userSchema.statics.findByEmailId = async (email) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    return undefined;
   }
   return user;
 };

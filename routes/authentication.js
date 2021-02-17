@@ -1,15 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/user");
-const { JWTKEY } = require("../constants//constants");
 const { default: validator } = require("validator");
 const auth = require("../middleware/auth");
 const { route } = require("./postData");
+const { default: axios } = require("axios");
 
 router.get("/me", auth, async (req, res, next) => {
   try {
+    console.log("USER");
     res.status(200).send({ user: req.user });
   } catch (e) {
+    console.log(e);
     res.status(500).send();
   }
 });
@@ -47,6 +49,11 @@ router.post("/signup", (req, res, next) => {
     firstname,
     lastname,
   });
+  if (!validator.isEmail(email) || password?.trim() === "") {
+    const err = new Error("Invalid Email/Password format");
+    err.status = 400;
+    next(err);
+  }
   user
     .save()
     .then((data) => {
@@ -97,6 +104,87 @@ router.post("/login", async (req, res, next) => {
     });
   }
 });
+router.post("/google", async (req, res, next) => {
+  const googleToken = req.body.token;
+  const { data } = req.body;
+  try {
+    const profileData = await axios.post(`https://oauth2.googleapis.com/tokeninfo?access_token=${googleToken}`);
+    if (!profileData) {
+      res.status(404).json({ message: "User not found" });
+    } else {
+      const user = await User.findByEmailId(profileData?.data?.email);
+      if (user) {
+        if (user?.googlelogin) {
+          const token = await user.generateAuthToken();
+          await user.saveAccessToken(googleToken);
+          return res.status(200).send({ token: token, user: user, message: "User successfully Logged in" });
+        } else {
+          return res.status(409).json({
+            message: "This email address is already being used",
+          });
+        }
+      } else {
+        const user = new User({
+          firstname: data?.givenName || "",
+          lastname: data.familyName || "",
+          email: profileData?.data?.email,
+          avatarurl: data?.photoUrl,
+          googlelogin: true,
+        });
+        console.log(user);
+        await user.save();
+        const token = await user.generateAuthToken();
+        await user.saveAccessToken(googleToken);
+        res.status(200).send({ token: token, user: user, message: "User successfully Logged in" });
+      }
+    }
+  } catch (err) {
+    console.log(err);
+    console.log(err?.response?.data);
+    res.status(500).json({ message: "Internal server Error" });
+  }
+});
+
+router.post("/facebook", async (req, res, next) => {
+  const facebookToken = req.body.token;
+  try {
+    const profileData = await axios.get(
+      `https://graph.facebook.com/me?access_token=${facebookToken}&fields=id,name,email,picture.height(500)`
+    );
+    if (!profileData) {
+      res.status(404).json({ message: "User not found" });
+    } else {
+      const user = await User.findByEmailId(profileData?.data?.email);
+      if (user) {
+        if (user?.facebooklogin) {
+          const token = await user.generateAuthToken();
+          await user.saveAccessToken(facebookToken);
+          return res.status(200).send({ token: token, user: user, message: "User successfully Logged in" });
+        } else {
+          return res.status(409).json({
+            message: "This email address is already being used",
+          });
+        }
+      } else {
+        const name = profileData?.data?.name.split(" ");
+        const user = new User({
+          firstname: name[0] || "",
+          lastname: name[1] || "",
+          email: profileData?.data?.email,
+          avatarurl: profileData?.data?.picture?.data?.url,
+          facebooklogin: true,
+        });
+        await user.save();
+        const token = await user.generateAuthToken();
+        await user.saveAccessToken(facebookToken);
+        res.status(200).send({ token: token, user: user, message: "User successfully Logged in" });
+      }
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Internal server Error" });
+  }
+});
 
 router.post("/logoutAll", auth, async (req, res, next) => {
   try {
@@ -113,6 +201,9 @@ router.post("/logout", auth, async (req, res, next) => {
     req.user.tokens = req.user.tokens.filter((token) => {
       return token.token !== req.token;
     });
+    if (req.user.facebooklogin || req.user.googlelogin) {
+      req.user.externaltokens = [];
+    }
     await req.user.save();
     res.status(200).send({ message: "Logged Out successfully" });
   } catch (err) {

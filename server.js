@@ -3,13 +3,11 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const path = require("path");
 const cors = require("cors");
-const multer = require("multer");
-const postData = require("./routes/postData");
 const authentication = require("./routes/authentication");
 const book = require("./routes/book");
 const User = require("./models/user");
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
 app.listen(port, () => {
   console.log("Server is running on port " + port);
 });
@@ -22,7 +20,7 @@ app.listen(port, () => {
 //   },
 //   () => {}
 // );
-mongoose.connect("mongodb://localhost:27017/test", { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGODB_URL, { useNewUrlParser: true, useUnifiedTopology: true });
 
 mongoose.connection.on("connected", () => {
   console.log("Mongodb connected");

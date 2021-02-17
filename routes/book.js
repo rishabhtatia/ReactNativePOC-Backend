@@ -1,14 +1,12 @@
 const express = require("express");
-const axios = require("axios");
 const multer = require("multer");
-const bodyParser = require("body-parser");
 const router = express.Router();
 const Book = require("../models/book");
 const auth = require("../middleware/auth");
 const sharp = require("sharp");
 const upload = multer({
   limits: {
-    fileSize: 15000000,
+    fileSize: 150000,
   },
   // fileFilter(req, file, cb) {
   //   console.log(file.originalname);
@@ -19,19 +17,23 @@ const upload = multer({
   // },
 });
 
-router.get("/post", auth, (req, res, next) => {
+router.get("/post", auth, async (req, res, next) => {
   const pageSize = +req.query.pagesize;
   const currentPage = +req.query.page;
-  const bookQuery = Book.find();
-  let fetchedPosts;
+  const searchText = req.query.searchText;
+  let findQuery = {};
+  if (searchText.trim()) {
+    findQuery = { title: new RegExp(searchText, "gi") };
+  }
+  const bookQuery = Book.find(findQuery);
+  let fetchedPosts = [];
   if (pageSize && currentPage) {
     bookQuery.skip(pageSize * (currentPage - 1)).limit(pageSize);
   }
   bookQuery
-    .find()
-    .then((documents) => {
+    .then(async (documents) => {
       fetchedPosts = documents;
-      return Book.countDocuments();
+      return await Book.find(findQuery).countDocuments();
     })
     .then((count) => {
       res.status(200).json({
@@ -50,7 +52,6 @@ router.get("/post/:id", auth, async (req, res, next) => {
   const id = req.params.id;
   try {
     const book = await Book.findById(id);
-    // console.log(book);
     if (!book) {
       return res.status(404).send({ message: "Book Not Found" });
     }
@@ -64,7 +65,6 @@ router.get("/post/:id", auth, async (req, res, next) => {
 router.patch("/updatepost/:id", auth, upload.single("image"), async (req, res, next) => {
   try {
     const id = req?.params?.id;
-    console.log(id);
     const { author, title, language, country, genre, pages } = req.body;
     const book = await Book.findByIdAndUpdate(
       id,
@@ -94,14 +94,12 @@ router.post("/addpost", upload.single("image"), auth, async (req, res, next) => 
   const { author, title, language, country, genre, pages } = req.body;
   let imageFile = req?.file?.buffer;
   if (imageFile) {
-    console.log("CONVERTING...");
     imageFile = await new sharp(imageFile).resize({ height: 500, width: 500 }).png().toBuffer();
   }
-  const book = new Book({ author, title, image: req?.file?.buffer, language, country, genre, pages });
+  const book = new Book({ author, title, image: imageFile, language, country, genre, pages });
   book
     .save()
     .then((createdPost) => {
-      console.log(createdPost);
       res.status(201).json({
         message: "Book Added successfully!",
         post: {
@@ -128,7 +126,6 @@ router.delete("/post/:id", auth, async (req, res, next) => {
   const id = req.params.id;
   try {
     const book = await Book.findByIdAndDelete(id);
-    console.log(book);
     if (!book) {
       return res.status(404).json({ message: "Book Not Found" });
     }
@@ -141,48 +138,14 @@ router.delete("/post/:id", auth, async (req, res, next) => {
 
 router.get("/imagepost/:id", async (req, res, next) => {
   const id = req.params.id;
-  console.log(id);
   try {
     const book = await Book.findById(id);
-    // console.log(book);
     let img = book.image;
-    // if (img == undefined) {
-    //   console.log(img);
-    // }
     res.set("Content-Type", "image/png");
     res.send(img);
   } catch (err) {
     console.log(err);
   }
 });
-
-// router.post("/addpost", auth, async (req, res, next) => {
-//   const { author, title, image, language, country, genre, pages } = req.body;
-//   const book = new Book({
-//     author,
-//     title,
-//     image,
-//     language,
-//     country,
-//     genre,
-//     pages,
-//   });
-//   book
-//     .save()
-//     .then((createdPost) => {
-//       res.status(201).json({
-//         message: "Post Added successfully!",
-//         post: {
-//           id: createdPost._id,
-//           ...createdPost,
-//         },
-//       });
-//     })
-//     .catch((err) => {
-//       res.status(400).json({
-//         message: "Not able to add Post!",
-//       });
-//     });
-// });
 
 module.exports = router;
